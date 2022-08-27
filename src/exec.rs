@@ -40,8 +40,7 @@ impl Executor {
             
             match code {
                 "label" => {
-                    self.index += 2;
-                    continue;
+                    self.index += 1;
                 },
                 "dmp" => println!(
                     "!!! DUMPED !!!\n  Registers:\n    RAX: {}\n    RBX: {}\n    RCX: {}\n    RDX: {}\n  Memory:\n    {}",
