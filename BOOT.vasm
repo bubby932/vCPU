@@ -1,9 +1,17 @@
-label loop
-memset 0 50
-mov rax 0
-memset 0 1
+label a
+label b
+label c
+label d
+label e
+label f
+label g
+label h
+label i
+label j
+
+memset 0 5
 mov rdx 0
-add rdx rcx rcx
-lt rbx rax rcx
+mov rcx 0
+add rdx rcx rax
+mov 0 rax
 dmp
-cgt rbx loop
