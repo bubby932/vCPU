@@ -1,7 +1,6 @@
 #![allow(non_snake_case)]
 
 use exec::Executor;
-use std::fs;
 
 mod exec;
 mod tokenizer;
