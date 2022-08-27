@@ -1,0 +1,9 @@
+label loop
+memset 0 50
+mov rax 0
+memset 0 1
+mov rdx 0
+add rdx rcx rcx
+lt rbx rax rcx
+dmp
+cgt rbx loop
