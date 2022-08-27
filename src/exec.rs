@@ -1,9 +1,10 @@
 use std::collections::HashMap;
 
 use crate::tokenizer::Assembly;
+use crate::vfs::VFS;
 
 // Memory size in bytes
-const MEM_SIZE : usize = 2;
+const MEM_SIZE : usize = 1024;
 
 // Minimum accessable memory address, will cause segmentation fault if read below this.
 // Consider this reserved for system use.
@@ -16,15 +17,17 @@ const CONTINUE_AFTER_FAULT : bool = false;
 pub struct Executor {
     index : usize,
     tokens : Vec<&'static str>,
-    label_table: HashMap<String, usize>
+    label_table: HashMap<String, usize>,
+    vfs : VFS
 }
 
 impl Executor {
-    pub fn new(asm : Assembly) -> Self {
+    pub fn new(vasm : Assembly, vfs : VFS) -> Self {
         Self {
             index: 0,
-            tokens: asm.tokens,
-            label_table: asm.label_table
+            tokens: vasm.tokens,
+            label_table: vasm.label_table,
+            vfs
         }
     }
     pub fn run(&mut self) {
@@ -43,7 +46,7 @@ impl Executor {
                     self.index += 1;
                 },
                 "dmp" => println!(
-                    "!!! DUMPED !!!\n  Registers:\n    RAX: {}\n    RBX: {}\n    RCX: {}\n    RDX: {}\n  Memory:\n    {}",
+                    "!!! DUMPED !!!\n  Registers:\n    RAX: {}\n    RBX: {}\n    RCX: {}\n    RDX: {}\n  Memory:\n    {}\nVFS:\n    {:#?}",
                     rax,
                     rbx,
                     rcx,
@@ -52,7 +55,8 @@ impl Executor {
                         .enumerate()
                         .map(|(index, byte)| { format!("{}: {}", index, byte) })
                         .collect::<Vec<String>>()
-                        .join("\n    ")
+                        .join("\n    "),
+                    self.vfs.dmp()
                 ),
                 "panic" => panic!("Panic requested by instruction set at instr #{}", self.index),
                 "fault" => fault(format!("Fault requested by instr #{}.", self.index)),
@@ -78,10 +82,10 @@ impl Executor {
                     self.index += 1;
                     let src = self.tokens[self.index];
                     let value = match src {
-                        "rax" => rax,
-                        "rbx" => rbx,
-                        "rcx" => rcx,
-                        "rdx" => rdx,
+                        "rax" => mem[rax as usize],
+                        "rbx" => mem[rbx as usize],
+                        "rcx" => mem[rcx as usize],
+                        "rdx" => mem[rdx as usize],
                         _ => {
                             if let Ok(addr) = src.parse::<usize>() {
                                 mem[addr]
@@ -276,12 +280,22 @@ impl Executor {
                 },
                 "goto" => {
                     self.index += 1;
-                    if let Some(position) = self.label_table.get(self.tokens[self.index]) {
-                        self.index = position.clone();
-                        continue;
-                    } else {
-                        panic!("Invalid label {} at instr #{}.", self.tokens[self.index], self.index);
-                    }
+                    let position = match self.tokens[self.index] {
+                        "rax" => rax as usize,
+                        "rbx" => rbx as usize,
+                        "rcx" => rcx as usize,
+                        "rdx" => rdx as usize,
+                        _ => {
+                            if let Some(position) = self.label_table.get(self.tokens[self.index]) {
+                                *position
+                            } else {
+                                panic!("Invalid label {} at instr #{}.", self.tokens[self.index], self.index);
+                            }
+                        }
+                    };
+
+                    self.index = position;
+                    continue;
                 },
                 "cgt" => {
                     self.index += 1;
@@ -393,6 +407,80 @@ impl Executor {
                         "rcx" => { rcx = value },
                         "rdx" => { rdx = value },
                         _ => panic!("Unrecognized register `{}` at instr #{}", self.tokens[self.index], self.index)
+                    }
+                },
+                "outstr" => {
+                    self.index += 1;
+                    let byte = match self.tokens[self.index] {
+                        "rax" => mem[rax as usize],
+                        "rbx" => mem[rbx as usize],
+                        "rcx" => mem[rcx as usize],
+                        "rdx" => mem[rdx as usize],
+                        _ => {
+                            if let Ok(val) = self.tokens[self.index].parse::<u8>() {
+                                val
+                            } else {
+                                panic!("Invalid out byte.");
+                            }
+                        }
+                    };
+
+                    print!("{}", String::from_utf8_lossy(&[byte]));
+                },
+                "outbyte" => {
+                    self.index += 1;
+                    let byte = match self.tokens[self.index] {
+                        "rax" => mem[rax as usize],
+                        "rbx" => mem[rbx as usize],
+                        "rcx" => mem[rcx as usize],
+                        "rdx" => mem[rdx as usize],
+                        _ => {
+                            if let Ok(val) = self.tokens[self.index].parse::<u8>() {
+                                val
+                            } else {
+                                panic!("Invalid out byte.");
+                            }
+                        }
+                    };
+
+                    print!("{}", &byte);
+                },
+                "vfsr" => {
+                    self.index += 1;
+                    let start_ptr = match self.tokens[self.index] {
+                        "rax" => rax as usize,
+                        "rbx" => rbx as usize,
+                        "rcx" => rcx as usize,
+                        "rdx" => rdx as usize,
+                        _ => self.tokens[self.index].parse::<usize>().expect("Failed to parse pointer literal.")
+                    };
+
+                    // MEMORY ADDRESS IS A POINTER TO A POINTER NOT A DIRECT POINTER
+                    // THIS IS BECAUSE REGISTERS CAN ONLY HOLD A u8 NOT A usize
+
+                    self.index += 1;
+                    let identifier = self.tokens[self.index].parse::<u8>().expect("Failed to parse file identifier.");
+                    let file = self.vfs.read_file(identifier).expect("Failed to read file.");
+
+                    if file.contents.len() + start_ptr >= MEM_SIZE {
+                        fault("SEGMENTATION FAULT - FAILED TO READ FILE INTO INVALID MEMORY".to_owned());
+                    }
+                    
+                    for (ptr, value) in file.contents.iter().enumerate() {
+                        mem[start_ptr + ptr] = *value;
+                    }
+                },
+                "//" => {
+                    self.index += 1;
+                    loop {
+                        self.index += 1;
+                        if self.index >= self.tokens.len() {
+                            panic!("EOF after comment without closing.");
+                        }
+
+                        if self.tokens[self.index] == "//" {
+                            break;
+                        }
                     }
                 },
                 _ => fault(format!("Unrecognized instruction `{}` at instr #{}", code, self.index))

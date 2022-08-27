@@ -22,6 +22,6 @@ fn main() {
 
     let assembly = tokenizer::parse_asm(&ROM);
 
-    let mut exec = Executor::new(assembly);
+    let mut exec = Executor::new(assembly, vfs);
     exec.run();
 }

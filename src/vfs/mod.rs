@@ -26,14 +26,14 @@ enum VfsErrorCode {
 
 // Nowhere near an ideal implementation, deal w it.
 pub struct VFS {
-    files : HashMap<usize, File>,
-    ct : usize
+    files : HashMap<u8, File>,
+    ct : u8
 }
 
 impl VFS {
-    pub fn create_with_files(files : HashMap<usize, File>) -> Self {
+    pub fn create_with_files(files : HashMap<u8, File>) -> Self {
         Self {
-            ct : files.len(),
+            ct : files.len() as u8,
             files
         }
     }
@@ -66,7 +66,7 @@ impl VFS {
         self.files.insert(file.identifier, file);
         Ok(())
     }
-    pub fn read_file(&self, identifier : usize) -> Result<&File, VfsError> {
+    pub fn read_file(&self, identifier : u8) -> Result<&File, VfsError> {
         if let Some(f) = self.files.get(&identifier) {
             return Ok(f);
         }
@@ -75,15 +75,20 @@ impl VFS {
             code: VfsErrorCode::ENOFILE
         })
     }
+    pub fn dmp(&self) -> &HashMap<u8, File> {
+        &self.files
+    }
 }
 
+#[derive(Debug)]
 pub struct File {
     pub contents : Vec<u8>,
-    pub identifier : usize,
+    pub identifier : u8,
     pub name : String,
     pub properties : VfsFileProperties
 }
 
+#[derive(Debug)]
 pub struct VfsFileProperties {
     pub read_only : bool,
 }
