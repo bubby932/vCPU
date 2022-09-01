@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+#[derive(Debug)]
 pub struct Assembly {
     pub label_table : HashMap<String, usize>,
     pub tokens : Vec<&'static str>

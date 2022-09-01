@@ -1,6 +1,6 @@
 vfsr        1       1                   // VFS read.                    //
 
-memset      0       0                   // Loop initial value.          //
+memset      0       1                   // Loop initial value.          //
 mov         rax     0                   // For loop counter.            //
 mov         rbx     0                   // For loop increment           //
 memset      0       0                   // Loop final delimiter         //
@@ -9,8 +9,10 @@ mov         rdx     0                   // Assign value from memory     //
 label main_loop                         // For loop.                    //
 
 add         rax     rbx     rax         // Inremement RAX by RBX        //
-eq          rcx     rax     rdx         // Compare *ctr to 0            //
+outstr      *rax                         // stdout *ctr                  //
+eq          rcx     *rax     rdx        // Compare *ctr to 0            //
 cgt         rcx     exit                // goto exit if true            //
-outstr      rax                         // stdout *ctr                  //
+
+goto main_loop
 
 label exit                              // exit                         //

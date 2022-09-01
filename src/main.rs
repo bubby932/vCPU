@@ -20,6 +20,9 @@ fn main() {
     let f = vfs.create_file(ROM.as_bytes().to_vec(), "BOOT.vraw".to_owned(), true);
     vfs.write_file(f).expect("Failed to write bootloader into VFS.");
 
+    let kernel = vfs.create_file(include_str!(r"../kernel.vraw").as_bytes().to_vec(), "kernel.vraw".to_owned(), true);
+    vfs.write_file(kernel).expect("Failed to write kernel into VFS.");
+
     let assembly = tokenizer::parse_asm(&ROM);
 
     let mut exec = Executor::new(assembly, vfs);
