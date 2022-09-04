@@ -554,6 +554,17 @@ impl Executor {
                     
                     // EXIT FORK CONTEXT
                 },
+                "inv" => {
+                    self.index += 1;
+
+                    match self.tokens[self.index] {
+                        "rax" => if self.rax > 0 { self.rax = 0; } else { self.rax = 1; },
+                        "rbx" => if self.rbx > 0 { self.rbx = 0; } else { self.rbx = 1; },
+                        "rcx" => if self.rcx > 0 { self.rcx = 0; } else { self.rcx = 1; },
+                        "rdx" => if self.rdx > 0 { self.rdx = 0; } else { self.rdx = 1; },
+                        _ => panic!("Unrecognized token after invert instruction.")
+                    }
+                },
                 _ => fault(format!("Unrecognized instruction `{}` at instr #{}", code, self.index))
             }
 
