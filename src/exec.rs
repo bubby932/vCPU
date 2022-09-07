@@ -25,7 +25,8 @@ pub struct Executor {
     rbx : u8,
     rcx : u8,
     rdx : u8,
-    mem : [u8; MEM_SIZE]
+    mem : [u8; MEM_SIZE],
+    stack : Vec<u8>
 }
 
 impl Executor {
@@ -39,7 +40,8 @@ impl Executor {
             rbx : 0,
             rcx : 0,
             rdx : 0,
-            mem : [0 ; MEM_SIZE]
+            mem : [0 ; MEM_SIZE],
+            stack : Vec::new()
         }
     }
     pub fn run(&mut self) {
@@ -565,6 +567,61 @@ impl Executor {
                         _ => panic!("Unrecognized token after invert instruction.")
                     }
                 },
+                "push" => {
+                    self.index += 1;
+                    let next = self.tokens[self.index];
+                    self.stack.push(match next {
+                        "rax" => self.rax,
+                        "*rax" => self.mem[self.rax as usize],
+                        "rbx" => self.rbx,
+                        "*rbx" => self.mem[self.rbx as usize],
+                        "rcx" => self.rcx,
+                        "*rcx" => self.mem[self.rcx as usize],
+                        "rdx" => self.rdx,
+                        "*rdx" => self.mem[self.rdx as usize],
+                        _ => {
+                            let x = next.chars().next().unwrap_or(' ');
+                            let full = next.split_at(1).1;
+                            match x {
+                                '#' => full.parse::<u8>().expect("Failed to parse numeric literal after push instr."),
+                                '*' => self.mem[full.parse::<usize>().expect("Failed to parse pointer.")],
+                                _ => panic!("Unrecognized literal after push instr.")
+                            }
+                        }
+                    });
+                },
+                "pop" => {
+                    let u8 = self.stack.pop().expect("Failed to pop element off stack - no elements remaining to pop.");
+
+                    self.index += 1;
+                    let token = self.tokens[self.index];
+
+                    match token {
+                        "rax" => self.rax = u8,
+                        "*rax" => self.mem[self.rax as usize] = u8,
+                        "rbx" => self.rbx = u8,
+                        "*rbx" => self.mem[self.rbx as usize] = u8,
+                        "rcx" => self.rcx = u8,
+                        "*racx" => self.mem[self.rcx as usize] = u8,
+                        "rdx" => self.rdx = u8,
+                        "*rdx" => self.mem[self.rdx as usize] = u8,
+                        _ => {
+                            let first = token.chars().next().unwrap_or(' ');
+                            let full = token.split_at(1).1;
+
+                            match first {
+                                '*' => {
+                                    let addr = full.parse::<usize>().expect("Failed to parse raw pointer.");
+
+                                    self.mem[addr] = u8;
+                                },
+                                _ => panic!("Unknown identifier.")
+                            }
+                        }
+                    }
+                },
+                "call" => todo!(),  // CALL subroutine
+                "esr" => todo!(),   // Exit SubRoutine
                 _ => fault(format!("Unrecognized instruction `{}` at instr #{}", code, self.index))
             }
 
