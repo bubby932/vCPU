@@ -1,16 +1,16 @@
-memset 0 1 // COMPILER INTERNAL // 
-mov rax 0 // COMPILER INTERNAL //
-memset 1 0 // COMPILER INTERNAL // 
-mov rbx 1
-eq rcx rax rbx // COMPILER INTERNAL // 
-inv rcx // EQUALITY // 
-cgt rcx 15 // IF // 
-memset 0 0 // COMPILER INTERNAL // 
-mov rax 0 // COMPILER INTERNAL //
-memset 0 0 // COMPILER INTERNAL // 
-mov rbx 0
-eq rcx rax rbx // COMPILER INTERNAL // 
-inv rcx // EQUALITY // 
-cgt rcx 14 // IF // 
-label 14 // IF END // 
-label 15 // IF END // 
+call main
+goto exit
+
+
+
+
+label   main        // function entry point //
+
+// do something //
+dmp
+
+esr
+
+
+
+label exit // exit point //

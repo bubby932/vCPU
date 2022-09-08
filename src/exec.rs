@@ -26,7 +26,7 @@ pub struct Executor {
     rcx : u8,
     rdx : u8,
     mem : [u8; MEM_SIZE],
-    stack : Vec<u8>
+    stack : Vec<usize>
 }
 
 impl Executor {
@@ -571,40 +571,40 @@ impl Executor {
                     self.index += 1;
                     let next = self.tokens[self.index];
                     self.stack.push(match next {
-                        "rax" => self.rax,
-                        "*rax" => self.mem[self.rax as usize],
-                        "rbx" => self.rbx,
-                        "*rbx" => self.mem[self.rbx as usize],
-                        "rcx" => self.rcx,
-                        "*rcx" => self.mem[self.rcx as usize],
-                        "rdx" => self.rdx,
-                        "*rdx" => self.mem[self.rdx as usize],
+                        "rax" => self.rax as usize,
+                        "*rax" => self.mem[self.rax as usize] as usize,
+                        "rbx" => self.rbx as usize,
+                        "*rbx" => self.mem[self.rbx as usize] as usize,
+                        "rcx" => self.rcx as usize,
+                        "*rcx" => self.mem[self.rcx as usize] as usize,
+                        "rdx" => self.rdx as usize,
+                        "*rdx" => self.mem[self.rdx as usize] as usize,
                         _ => {
                             let x = next.chars().next().unwrap_or(' ');
                             let full = next.split_at(1).1;
                             match x {
-                                '#' => full.parse::<u8>().expect("Failed to parse numeric literal after push instr."),
-                                '*' => self.mem[full.parse::<usize>().expect("Failed to parse pointer.")],
+                                '#' => full.parse::<usize>().expect("Failed to parse numeric literal after push instr."),
+                                '*' => self.mem[full.parse::<usize>().expect("Failed to parse pointer.")] as usize,
                                 _ => panic!("Unrecognized literal after push instr.")
                             }
                         }
                     });
                 },
                 "pop" => {
-                    let u8 = self.stack.pop().expect("Failed to pop element off stack - no elements remaining to pop.");
+                    let usize = self.stack.pop().expect("Failed to pop element off stack - no elements remaining to pop.");
 
                     self.index += 1;
                     let token = self.tokens[self.index];
 
                     match token {
-                        "rax" => self.rax = u8,
-                        "*rax" => self.mem[self.rax as usize] = u8,
-                        "rbx" => self.rbx = u8,
-                        "*rbx" => self.mem[self.rbx as usize] = u8,
-                        "rcx" => self.rcx = u8,
-                        "*racx" => self.mem[self.rcx as usize] = u8,
-                        "rdx" => self.rdx = u8,
-                        "*rdx" => self.mem[self.rdx as usize] = u8,
+                        "rax" => self.rax = usize as u8,
+                        "*rax" => self.mem[self.rax as usize] = usize as u8,
+                        "rbx" => self.rbx = usize as u8,
+                        "*rbx" => self.mem[self.rbx as usize] = usize as u8,
+                        "rcx" => self.rcx = usize as u8,
+                        "*racx" => self.mem[self.rcx as usize] = usize as u8,
+                        "rdx" => self.rdx = usize as u8,
+                        "*rdx" => self.mem[self.rdx as usize] = usize as u8,
                         _ => {
                             let first = token.chars().next().unwrap_or(' ');
                             let full = token.split_at(1).1;
@@ -613,15 +613,32 @@ impl Executor {
                                 '*' => {
                                     let addr = full.parse::<usize>().expect("Failed to parse raw pointer.");
 
-                                    self.mem[addr] = u8;
+                                    self.mem[addr] = usize as u8;
                                 },
                                 _ => panic!("Unknown identifier.")
                             }
                         }
                     }
                 },
-                "call" => todo!(),  // CALL subroutine
-                "esr" => todo!(),   // Exit SubRoutine
+                "call" => {
+                    self.index += 1;
+                    let t = self.tokens[self.index];
+
+                    if !self.label_table.contains_key(t) {
+                        panic!("Called undefined subroutine {}!", t);
+                    }
+
+                    self.stack.push(self.index + 1);
+                    
+                    self.index = *self.label_table.get(t).unwrap();
+                    continue;
+                }
+                "esr" => {
+                    let e = self.stack.pop().expect("Failed to exit an undefined subroutine!");
+
+                    self.index = e;
+                    continue;
+                }
                 _ => fault(format!("Unrecognized instruction `{}` at instr #{}", code, self.index))
             }
 
